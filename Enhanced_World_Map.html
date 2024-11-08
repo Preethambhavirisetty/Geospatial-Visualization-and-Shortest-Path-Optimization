@@ -1,0 +1,472 @@
+
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Enhanced World Route Planner</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.css"/>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"/>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            }
+            #map {
+                position: absolute;
+                top: 0;
+                bottom: 0;
+                right: 0;
+                left: 0;
+                height: 100vh !important;
+                width: 100vw !important;
+            }
+            .control-panel {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 1000;
+                background-color: rgba(255, 255, 255, 0.95);
+                padding: 20px;
+                border-radius: 15px;
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+                max-width: 320px;
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.3);
+            }
+            .theme-controls {
+                position: fixed;
+                bottom: 30px;
+                right: 20px;
+                z-index: 1000;
+                background-color: rgba(255, 255, 255, 0.95);
+                padding: 10px;
+                border-radius: 10px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                display: flex;
+                gap: 10px;
+            }
+            .theme-btn {
+                padding: 8px 12px;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 5px;
+                transition: all 0.3s ease;
+                background-color: #f8f9fa;
+            }
+            .theme-btn:hover {
+                background-color: #e9ecef;
+            }
+            .theme-btn.active {
+                background-color: #4CAF50;
+                color: white;
+            }
+            select {
+                width: 100%;
+                padding: 10px;
+                margin: 8px 0;
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                background-color: white;
+                font-size: 14px;
+                appearance: none;
+                background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23007CB2%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+                background-repeat: no-repeat;
+                background-position: right 12px top 50%;
+                background-size: 12px auto;
+            }
+            .calculate-btn {
+                width: 100%;
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                padding: 12px;
+                border-radius: 8px;
+                cursor: pointer;
+                margin-top: 15px;
+                font-weight: 600;
+                transition: all 0.3s ease;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+            }
+            .calculate-btn:hover {
+                background-color: #45a049;
+                transform: translateY(-1px);
+            }
+            .stats-panel {
+                position: fixed;
+                bottom: 30px;
+                left: 20px;
+                z-index: 1000;
+                background-color: rgba(255, 255, 255, 0.95);
+                padding: 15px;
+                border-radius: 15px;
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+                display: none;
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                max-width: 280px;
+            }
+            .stat-item {
+                display: flex;
+                justify-content: space-between;
+                margin: 8px 0;
+                font-size: 14px;
+            }
+            .stat-value {
+                font-weight: 600;
+                color: #4CAF50;
+            }
+            .city-marker {
+                width: 12px;
+                height: 12px;
+                border-radius: 50%;
+                border: 3px solid white;
+                box-shadow: 0 0 10px rgba(0,0,0,0.3);
+                transition: all 0.3s ease;
+            }
+            .city-marker:hover {
+                transform: scale(1.3);
+            }
+            .leaflet-popup-content {
+                margin: 10px;
+                text-align: center;
+            }
+            .leaflet-popup-content h4 {
+                margin: 0 0 5px 0;
+                color: #4CAF50;
+            }
+            .leaflet-popup-content p {
+                margin: 5px 0;
+                font-size: 12px;
+            }
+            .zoom-controls {
+                position: fixed;
+                right: 20px;
+                top: 50%;
+                transform: translateY(-50%);
+                z-index: 1000;
+                background-color: rgba(255, 255, 255, 0.95);
+                border-radius: 10px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                overflow: hidden;
+            }
+            .zoom-btn {
+                display: block;
+                width: 40px;
+                height: 40px;
+                border: none;
+                background-color: transparent;
+                cursor: pointer;
+                font-size: 18px;
+                color: #333;
+                transition: all 0.3s ease;
+            }
+            .zoom-btn:hover {
+                background-color: #f8f9fa;
+                color: #4CAF50;
+            }
+            .zoom-separator {
+                height: 1px;
+                background-color: #ddd;
+                margin: 0;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="map"></div>
+        
+        <div class="control-panel">
+            <h3 style="margin-top: 0; color: #333;">Route Planner</h3>
+            <select id="source">
+                <option value="">Select Source City</option>
+                <option value="Amsterdam, Netherlands">Amsterdam, Netherlands</option>
+<option value="Auckland, New Zealand">Auckland, New Zealand</option>
+<option value="Bangkok, Thailand">Bangkok, Thailand</option>
+<option value="Beijing, China">Beijing, China</option>
+<option value="Berlin, Germany">Berlin, Germany</option>
+<option value="Buenos Aires, Argentina">Buenos Aires, Argentina</option>
+<option value="Cairo, Egypt">Cairo, Egypt</option>
+<option value="Cape Town, South Africa">Cape Town, South Africa</option>
+<option value="Dubai, UAE">Dubai, UAE</option>
+<option value="Hong Kong, China">Hong Kong, China</option>
+<option value="Istanbul, Turkey">Istanbul, Turkey</option>
+<option value="London, UK">London, UK</option>
+<option value="Madrid, Spain">Madrid, Spain</option>
+<option value="Mexico City, Mexico">Mexico City, Mexico</option>
+<option value="Moscow, Russia">Moscow, Russia</option>
+<option value="Mumbai, India">Mumbai, India</option>
+<option value="New York, USA">New York, USA</option>
+<option value="Paris, France">Paris, France</option>
+<option value="Rio de Janeiro, Brazil">Rio de Janeiro, Brazil</option>
+<option value="Rome, Italy">Rome, Italy</option>
+<option value="San Francisco, USA">San Francisco, USA</option>
+<option value="Seoul, South Korea">Seoul, South Korea</option>
+<option value="Singapore, Singapore">Singapore, Singapore</option>
+<option value="Stockholm, Sweden">Stockholm, Sweden</option>
+<option value="Sydney, Australia">Sydney, Australia</option>
+<option value="São Paulo, Brazil">São Paulo, Brazil</option>
+<option value="Tokyo, Japan">Tokyo, Japan</option>
+<option value="Toronto, Canada">Toronto, Canada</option>
+<option value="Vancouver, Canada">Vancouver, Canada</option>
+<option value="Vienna, Austria">Vienna, Austria</option>
+            </select>
+            <select id="destination">
+                <option value="">Select Destination City</option>
+                <option value="Amsterdam, Netherlands">Amsterdam, Netherlands</option>
+<option value="Auckland, New Zealand">Auckland, New Zealand</option>
+<option value="Bangkok, Thailand">Bangkok, Thailand</option>
+<option value="Beijing, China">Beijing, China</option>
+<option value="Berlin, Germany">Berlin, Germany</option>
+<option value="Buenos Aires, Argentina">Buenos Aires, Argentina</option>
+<option value="Cairo, Egypt">Cairo, Egypt</option>
+<option value="Cape Town, South Africa">Cape Town, South Africa</option>
+<option value="Dubai, UAE">Dubai, UAE</option>
+<option value="Hong Kong, China">Hong Kong, China</option>
+<option value="Istanbul, Turkey">Istanbul, Turkey</option>
+<option value="London, UK">London, UK</option>
+<option value="Madrid, Spain">Madrid, Spain</option>
+<option value="Mexico City, Mexico">Mexico City, Mexico</option>
+<option value="Moscow, Russia">Moscow, Russia</option>
+<option value="Mumbai, India">Mumbai, India</option>
+<option value="New York, USA">New York, USA</option>
+<option value="Paris, France">Paris, France</option>
+<option value="Rio de Janeiro, Brazil">Rio de Janeiro, Brazil</option>
+<option value="Rome, Italy">Rome, Italy</option>
+<option value="San Francisco, USA">San Francisco, USA</option>
+<option value="Seoul, South Korea">Seoul, South Korea</option>
+<option value="Singapore, Singapore">Singapore, Singapore</option>
+<option value="Stockholm, Sweden">Stockholm, Sweden</option>
+<option value="Sydney, Australia">Sydney, Australia</option>
+<option value="São Paulo, Brazil">São Paulo, Brazil</option>
+<option value="Tokyo, Japan">Tokyo, Japan</option>
+<option value="Toronto, Canada">Toronto, Canada</option>
+<option value="Vancouver, Canada">Vancouver, Canada</option>
+<option value="Vienna, Austria">Vienna, Austria</option>
+            </select>
+            <button class="calculate-btn" onclick="calculateRoute()">
+                <i class="fas fa-route"></i>
+                Calculate Route
+            </button>
+        </div>
+
+        <div class="stats-panel" id="statsPanel">
+            <h4 style="margin-top: 0; color: #333;">Route Information</h4>
+            <div id="routeStats"></div>
+        </div>
+
+        <div class="zoom-controls">
+            <button class="zoom-btn" onclick="map.zoomIn()">
+                <i class="fas fa-plus"></i>
+            </button>
+            <hr class="zoom-separator">
+            <button class="zoom-btn" onclick="map.zoomOut()">
+                <i class="fas fa-minus"></i>
+            </button>
+        </div>
+
+        <div class="theme-controls">
+            <button class="theme-btn active" onclick="setTheme('light')">
+                <i class="fas fa-sun"></i>
+                Light
+            </button>
+            <button class="theme-btn" onclick="setTheme('dark')">
+                <i class="fas fa-moon"></i>
+                Dark
+            </button>
+        </div>
+
+        <script>
+        let map = L.map('map', {
+            center: [20, 0],
+            zoom: 2,
+            minZoom: 2,
+            worldCopyJump: true,
+            zoomControl: false
+        });
+
+        const locations = {'New York, USA': [40.712776, -74.005974], 'London, UK': [51.507351, -0.127758], 'Tokyo, Japan': [35.689487, 139.691711], 'Paris, France': [48.856613, 2.352222], 'Berlin, Germany': [52.520008, 13.404954], 'Sydney, Australia': [-33.86882, 151.20929], 'Cape Town, South Africa': [-33.92487, 18.424055], 'Beijing, China': [39.904202, 116.407394], 'Moscow, Russia': [55.755825, 37.617298], 'Dubai, UAE': [25.276987, 55.296249], 'São Paulo, Brazil': [-23.55052, -46.633308], 'Mumbai, India': [19.07609, 72.877426], 'Mexico City, Mexico': [19.432608, -99.133209], 'Toronto, Canada': [43.65107, -79.347015], 'Buenos Aires, Argentina': [-34.603722, -58.381592], 'Cairo, Egypt': [30.04442, 31.235712], 'Istanbul, Turkey': [41.00824, 28.978359], 'Seoul, South Korea': [37.566536, 126.977966], 'Singapore, Singapore': [1.352083, 103.819839], 'Rome, Italy': [41.902782, 12.496366], 'Bangkok, Thailand': [13.756331, 100.501765], 'Rio de Janeiro, Brazil': [-22.906847, -43.172896], 'Amsterdam, Netherlands': [52.370216, 4.895168], 'Madrid, Spain': [40.416775, -3.70379], 'Vienna, Austria': [48.208174, 16.373819], 'Stockholm, Sweden': [59.329323, 18.068581], 'Hong Kong, China': [22.396428, 114.109497], 'Auckland, New Zealand': [-36.84846, 174.763332], 'Vancouver, Canada': [49.282729, -123.120738], 'San Francisco, USA': [37.774929, -122.419416]};
+        const edges = [('New York, USA', 'London, UK', 5571), ('London, UK', 'Paris, France', 344), ('Paris, France', 'Berlin, Germany', 878), ('Berlin, Germany', 'Moscow, Russia', 1609), ('Moscow, Russia', 'Beijing, China', 5800), ('Beijing, China', 'Tokyo, Japan', 2098), ('Tokyo, Japan', 'Seoul, South Korea', 1158), ('Seoul, South Korea', 'Hong Kong, China', 2097), ('Hong Kong, China', 'Singapore, Singapore', 2570), ('Singapore, Singapore', 'Sydney, Australia', 6298), ('Sydney, Australia', 'Auckland, New Zealand', 2164), ('Dubai, UAE', 'Mumbai, India', 1921), ('Mumbai, India', 'Bangkok, Thailand', 3168), ('Bangkok, Thailand', 'Hong Kong, China', 1687), ('London, UK', 'Amsterdam, Netherlands', 358), ('Amsterdam, Netherlands', 'Berlin, Germany', 577), ('Paris, France', 'Madrid, Spain', 1054), ('Madrid, Spain', 'Rome, Italy', 1365), ('Rome, Italy', 'Vienna, Austria', 765), ('Vienna, Austria', 'Stockholm, Sweden', 1247), ('New York, USA', 'Toronto, Canada', 551), ('Toronto, Canada', 'Vancouver, Canada', 3363), ('Vancouver, Canada', 'San Francisco, USA', 1278), ('San Francisco, USA', 'Mexico City, Mexico', 3057), ('Mexico City, Mexico', 'São Paulo, Brazil', 7713), ('São Paulo, Brazil', 'Rio de Janeiro, Brazil', 429), ('Rio de Janeiro, Brazil', 'Buenos Aires, Argentina', 2089), ('Dubai, UAE', 'Cairo, Egypt', 2426), ('Cairo, Egypt', 'Istanbul, Turkey', 1228), ('Istanbul, Turkey', 'Vienna, Austria', 1034)];
+        let currentMarkers = [];
+        let currentPath = null;
+        let currentTheme = 'light';
+
+        // Initialize light theme
+        setTheme('light');
+
+        function setTheme(theme) {
+            currentTheme = theme;
+            const lightBtn = document.querySelector('.theme-btn:first-child');
+            const darkBtn = document.querySelector('.theme-btn:last-child');
+            
+            if (theme === 'light') {
+                updateTileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png');
+                lightBtn.classList.add('active');
+                darkBtn.classList.remove('active');
+            } else {
+                updateTileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png');
+                darkBtn.classList.add('active');
+                lightBtn.classList.remove('active');
+            }
+        }
+
+        function updateTileLayer(url) {
+            map.eachLayer((layer) => {
+                if (layer instanceof L.TileLayer) {
+                    map.removeLayer(layer);
+                }
+            });
+
+            L.tileLayer(url, {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                maxZoom: 19,
+                noWrap: true,
+                bounds: [[-90, -180], [90, 180]]
+            }).addTo(map);
+        }
+
+        function calculateRoute() {
+            clearRoute();
+            const source = document.getElementById('source').value;
+            const destination = document.getElementById('destination').value;
+
+            if (!source || !destination) {
+                alert('Please select both source and destination cities');
+                return;
+            }
+
+            if (source === destination) {
+                alert('Please select different cities for source and destination');
+                return;
+            }
+
+            const sourceCoords = locations[source];
+            const destCoords = locations[destination];
+
+            // Add markers with animation
+            addMarker(sourceCoords, '#4CAF50', source);
+            addMarker(destCoords, '#f44336', destination);
+
+            // Draw animated path
+            drawPath(sourceCoords, destCoords);
+
+            // Update stats
+            updateStats(source, destination);
+
+            // Fit map to show the route
+            const bounds = L.latLngBounds([sourceCoords, destCoords]);
+            map.fitBounds(bounds, {padding: [50, 50]});
+        }
+
+        function addMarker(coords, color, city) {
+            const marker = L.marker(coords, {
+                icon: L.divIcon({
+                    className: 'city-marker',
+                    html: `<div style="background-color: ${color};" class="city-marker"></div>`,
+                    iconSize: [18, 18]
+                })
+            }).addTo(map);
+
+            marker.bindPopup(`
+                <h4>${city}</h4>
+                <p>Latitude: ${coords[0].toFixed(4)}°</p>
+                <p>Longitude: ${coords[1].toFixed(4)}°</p>
+            `);
+
+            currentMarkers.push(marker);
+        }
+
+        function drawPath(start, end) {
+            const path = [start, end];
+            currentPath = L.polyline(path, {
+                color: currentTheme === 'light' ? '#4CAF50' : '#69f0ae',
+                weight: 3,
+                opacity: 0.8,
+                dashArray: '10, 10',
+                lineCap: 'round'
+            }).addTo(map);
+
+            animatePath();
+        }
+
+        function animatePath() {
+            let offset = 0;
+            const animate = () => {
+                offset = (offset + 1) % 20;
+                if (currentPath) {
+                    currentPath.setStyle({ dashOffset: -offset });
+                    requestAnimationFrame(animate);
+                }
+            };
+            animate();
+        }
+
+        function updateStats(source, dest) {
+            const stats = calculateDistance(source, dest);
+            document.getElementById('routeStats').innerHTML = `
+                <div class="stat-item">
+                    <span>Distance:</span>
+                    <span class="stat-value">${stats.distance.toLocaleString()} km</span>
+                </div>
+                <div class="stat-item">
+                    <span>Flight Time:</span>
+                    <span class="stat-value">${stats.flightTime}</span>
+                </div>
+                <div class="stat-item">
+                    <span>Time Difference:</span>
+                    <span class="stat-value">${stats.timeDiff} hours</span>
+                </div>
+            `;
+            
+            document.getElementById('statsPanel').style.display =
+            `;
+            
+            document.getElementById('statsPanel').style.display = 'block';
+        }
+
+        function calculateDistance(source, dest) {
+            const [lat1, lon1] = locations[source];
+            const [lat2, lon2] = locations[dest];
+            
+            const R = 6371; // Earth's radius in kilometers
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = 
+                Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const distance = Math.round(R * c);
+
+            // Calculate flight time assuming average speed of 800 km/h
+            const hours = Math.floor(distance / 800);
+            const minutes = Math.round((distance / 800 % 1) * 60);
+            const flightTime = `${hours}h ${minutes}m`;
+
+            // Calculate time difference based on longitude
+            const timeDiff = Math.round((lon2 - lon1) * 24 / 360);
+
+            return { distance, flightTime, timeDiff };
+        }
+
+        function clearRoute() {
+            currentMarkers.forEach(marker => map.removeLayer(marker));
+            currentMarkers = [];
+            if (currentPath) {
+                map.removeLayer(currentPath);
+                currentPath = null;
+            }
+            document.getElementById('statsPanel').style.display = 'none';
+        }
+        </script>
+    </body>
+    </html>
+    

@@ -1,10 +1,4 @@
-import folium
-import json
-import requests
-import math
 
-def create_map_html(locations, edges):
-    custom_html = '''
     <!DOCTYPE html>
     <html>
     <head>
@@ -140,11 +134,39 @@ def create_map_html(locations, edges):
             <h3 style="margin-top: 0; color: #333;">Route Planner</h3>
             <select id="source">
                 <option value="">Select Source City</option>
-                ''' + "\n".join([f'<option value="{city}">{city}</option>' for city in sorted(locations.keys())]) + '''
+                <option value="Beijing, China">Beijing, China</option>
+<option value="Berlin, Germany">Berlin, Germany</option>
+<option value="Cairo, Egypt">Cairo, Egypt</option>
+<option value="Cape Town, South Africa">Cape Town, South Africa</option>
+<option value="Dubai, UAE">Dubai, UAE</option>
+<option value="Istanbul, Turkey">Istanbul, Turkey</option>
+<option value="London, UK">London, UK</option>
+<option value="Moscow, Russia">Moscow, Russia</option>
+<option value="Mumbai, India">Mumbai, India</option>
+<option value="New York, USA">New York, USA</option>
+<option value="Paris, France">Paris, France</option>
+<option value="Singapore, Singapore">Singapore, Singapore</option>
+<option value="Sydney, Australia">Sydney, Australia</option>
+<option value="São Paulo, Brazil">São Paulo, Brazil</option>
+<option value="Tokyo, Japan">Tokyo, Japan</option>
             </select>
             <select id="destination">
                 <option value="">Select Destination City</option>
-                ''' + "\n".join([f'<option value="{city}">{city}</option>' for city in sorted(locations.keys())]) + '''
+                <option value="Beijing, China">Beijing, China</option>
+<option value="Berlin, Germany">Berlin, Germany</option>
+<option value="Cairo, Egypt">Cairo, Egypt</option>
+<option value="Cape Town, South Africa">Cape Town, South Africa</option>
+<option value="Dubai, UAE">Dubai, UAE</option>
+<option value="Istanbul, Turkey">Istanbul, Turkey</option>
+<option value="London, UK">London, UK</option>
+<option value="Moscow, Russia">Moscow, Russia</option>
+<option value="Mumbai, India">Mumbai, India</option>
+<option value="New York, USA">New York, USA</option>
+<option value="Paris, France">Paris, France</option>
+<option value="Singapore, Singapore">Singapore, Singapore</option>
+<option value="Sydney, Australia">Sydney, Australia</option>
+<option value="São Paulo, Brazil">São Paulo, Brazil</option>
+<option value="Tokyo, Japan">Tokyo, Japan</option>
             </select>
             <button class="calculate-btn" onclick="calculateRoute()">
                 <i class="fas fa-route"></i> Calculate Route
@@ -188,7 +210,7 @@ def create_map_html(locations, edges):
         let currentTileLayer = null;
         let currentMarkers = [];
         let currentPath = null;
-        const locations = ''' + json.dumps(locations) + ''';
+        const locations = {"New York, USA": [40.712776, -74.005974], "London, UK": [51.507351, -0.127758], "Tokyo, Japan": [35.689487, 139.691711], "Paris, France": [48.856613, 2.352222], "Beijing, China": [39.904202, 116.407394], "Sydney, Australia": [-33.86882, 151.20929], "Dubai, UAE": [25.276987, 55.296249], "Singapore, Singapore": [1.352083, 103.819839], "Mumbai, India": [19.07609, 72.877426], "Istanbul, Turkey": [41.00824, 28.978359], "S\u00e3o Paulo, Brazil": [-23.55052, -46.633308], "Cairo, Egypt": [30.04442, 31.235712], "Cape Town, South Africa": [-33.92487, 18.424055], "Moscow, Russia": [55.755825, 37.617298], "Berlin, Germany": [52.520008, 13.404954]};
 
         // Initialize with light theme
         setMapTheme('light');
@@ -357,42 +379,4 @@ def create_map_html(locations, edges):
         </script>
     </body>
     </html>
-    '''
-
-    with open("World_Map.html", "w", encoding="utf-8") as f:
-        f.write(custom_html)
-
-# Define locations and edges
-locations = {
-    "New York, USA": [40.712776, -74.005974],
-    "London, UK": [51.507351, -0.127758],
-    "Tokyo, Japan": [35.689487, 139.691711],
-    "Paris, France": [48.856613, 2.352222],
-    "Beijing, China": [39.904202, 116.407394],
-    "Sydney, Australia": [-33.868820, 151.209290],
-    "Dubai, UAE": [25.276987, 55.296249],
-    "Singapore, Singapore": [1.352083, 103.819839],
-    "Mumbai, India": [19.076090, 72.877426],
-    "Istanbul, Turkey": [41.008240, 28.978359],
-    "São Paulo, Brazil": [-23.550520, -46.633308],
-    "Cairo, Egypt": [30.044420, 31.235712],
-    "Cape Town, South Africa": [-33.924870, 18.424055],
-    "Moscow, Russia": [55.755825, 37.617298],
-    "Berlin, Germany": [52.520008, 13.404954]
-}
-
-edges = [
-    ("New York, USA", "London, UK", 5571),
-    ("London, UK", "Paris, France", 344),
-    ("Paris, France", "Berlin, Germany", 878),
-    ("Berlin, Germany", "Moscow, Russia", 1609),
-    ("Moscow, Russia", "Beijing, China", 5800),
-    ("Beijing, China", "Tokyo, Japan", 2098),
-    ("Dubai, UAE", "Mumbai, India", 1921),
-    ("Mumbai, India", "Singapore, Singapore", 3915),
-    ("Singapore, Singapore", "Sydney, Australia", 6298)
-]
-
-# Create the map
-create_map_html(locations, edges)
-print('World Map has been created and saved as "World_Map.html"')
+    
