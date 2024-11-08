@@ -2,380 +2,549 @@
     <!DOCTYPE html>
     <html>
     <head>
-        <title>World Route Planner</title>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Advanced Route Planner</title>
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"/>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
         <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
         <style>
+            :root {
+                --bg-color: #ffffff;
+                --text-color: #333333;
+                --card-bg: #ffffff;
+                --border-color: #e0e0e0;
+            }
+            
+            [data-theme="dark"] {
+                --bg-color: #1a1a1a;
+                --text-color: #ffffff;
+                --card-bg: #2d2d2d;
+                --border-color: #404040;
+            }
+            
             body {
                 margin: 0;
                 padding: 0;
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                font-family: 'Segoe UI', Tahoma, sans-serif;
+                background-color: var(--bg-color);
+                color: var(--text-color);
+                transition: background-color 0.3s, color 0.3s;
             }
-            #map {
+            
+            #map { 
+                height: 100vh; 
+                width: 100%;
                 position: absolute;
                 top: 0;
-                bottom: 0;
-                right: 0;
                 left: 0;
-                height: 100vh !important;
-                width: 100vw !important;
+                z-index: 1;
             }
-            .control-panel {
-                position: fixed;
+            
+            .control-container {
+                position: absolute;
                 top: 20px;
                 right: 20px;
                 z-index: 1000;
-                background-color: rgba(255, 255, 255, 0.95);
+                background: var(--card-bg);
                 padding: 20px;
-                border-radius: 15px;
-                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-                max-width: 320px;
+                border-radius: 12px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                width: 320px;
                 backdrop-filter: blur(10px);
+                border: 1px solid var(--border-color);
             }
-            .theme-controls {
-                position: fixed;
-                bottom: 30px;
-                right: 20px;
-                z-index: 1000;
-                background-color: rgba(255, 255, 255, 0.95);
-                padding: 10px;
-                border-radius: 10px;
-                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            
+            .title {
+                margin: 0 0 15px 0;
+                font-size: 1.5em;
+                font-weight: 600;
+                color: var(--text-color);
                 display: flex;
-                gap: 10px;
+                align-items: center;
+                justify-content: space-between;
             }
+            
             select {
                 width: 100%;
                 padding: 10px;
                 margin: 8px 0;
-                border: 1px solid #ddd;
+                border: 1px solid var(--border-color);
                 border-radius: 8px;
-                background-color: white;
+                background: var(--bg-color);
+                color: var(--text-color);
                 font-size: 14px;
+                appearance: none;
             }
-            .calculate-btn {
+            
+            .find-route-btn {
                 width: 100%;
-                background-color: #4CAF50;
-                color: white;
-                border: none;
                 padding: 12px;
+                margin: 10px 0;
+                border: none;
                 border-radius: 8px;
-                cursor: pointer;
-                margin-top: 15px;
-                font-weight: 600;
-                transition: all 0.3s ease;
-            }
-            .calculate-btn:hover {
-                background-color: #45a049;
-            }
-            .stats-panel {
-                position: fixed;
-                bottom: 30px;
-                left: 20px;
-                z-index: 1000;
-                background-color: rgba(255, 255, 255, 0.95);
-                padding: 15px;
-                border-radius: 15px;
-                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-                display: none;
-                backdrop-filter: blur(10px);
-                min-width: 250px;
-            }
-            .theme-btn {
-                padding: 8px 15px;
-                border: none;
-                border-radius: 5px;
-                cursor: pointer;
-                background-color: #f8f9fa;
-                transition: all 0.3s ease;
-            }
-            .theme-btn.active {
-                background-color: #4CAF50;
+                background: #4CAF50;
                 color: white;
-            }
-            .zoom-controls {
-                position: fixed;
-                right: 20px;
-                top: 50%;
-                transform: translateY(-50%);
-                z-index: 1000;
-                background-color: rgba(255, 255, 255, 0.95);
-                border-radius: 10px;
-                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            }
-            .zoom-btn {
-                display: block;
-                width: 40px;
-                height: 40px;
-                border: none;
-                background-color: white;
+                font-weight: 600;
                 cursor: pointer;
-                font-size: 18px;
-                color: #333;
+                transition: background 0.3s;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
             }
-            .route-line {
-                stroke-dasharray: 8, 8;
-                animation: dash 20s linear infinite;
+            
+            .find-route-btn:hover {
+                background: #45a049;
             }
-            @keyframes dash {
-                to {
-                    stroke-dashoffset: -1000;
-                }
+            
+            #routeInfo {
+                margin-top: 15px;
+                padding: 15px;
+                background: var(--card-bg);
+                border-radius: 8px;
+                border: 1px solid var(--border-color);
+                display: none;
+            }
+            
+            .theme-toggle {
+                position: absolute;
+                bottom: 20px;
+                right: 20px;
+                z-index: 1000;
+                padding: 10px;
+                border-radius: 8px;
+                background: var(--card-bg);
+                border: 1px solid var(--border-color);
+                color: var(--text-color);
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            
+            .route-step {
+                padding: 8px;
+                margin: 4px 0;
+                background: var(--bg-color);
+                border-radius: 4px;
+                border: 1px solid var(--border-color);
+            }
+            
+            .stats-container {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+                margin-bottom: 15px;
+            }
+            
+            .stat-card {
+                background: var(--bg-color);
+                padding: 10px;
+                border-radius: 8px;
+                border: 1px solid var(--border-color);
+                text-align: center;
+            }
+            
+            .stat-value {
+                font-size: 1.2em;
+                font-weight: 600;
+                color: #4CAF50;
+            }
+            
+            .animation {
+                animation: fadeIn 0.3s ease-in;
+            }
+            
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(-10px); }
+                to { opacity: 1; transform: translateY(0); }
             }
         </style>
     </head>
     <body>
         <div id="map"></div>
+        <div class="control-container animation">
+            <div class="title">
+                <span><i class="fas fa-route"></i> Route Planner</span>
+            </div>
+            <select id="start">
+                <option value="">Select Start City</option>
+                <option value="Abu Dhabi">Abu Dhabi</option>
+<option value="Adelaide">Adelaide</option>
+<option value="Alexandria">Alexandria</option>
+<option value="Amsterdam">Amsterdam</option>
+<option value="Ankara">Ankara</option>
+<option value="Antalya">Antalya</option>
+<option value="Bali">Bali</option>
+<option value="Bangalore">Bangalore</option>
+<option value="Bangkok">Bangkok</option>
+<option value="Barcelona">Barcelona</option>
+<option value="Beijing">Beijing</option>
+<option value="Berlin">Berlin</option>
+<option value="Birmingham">Birmingham</option>
+<option value="Brasília">Brasília</option>
+<option value="Brisbane">Brisbane</option>
+<option value="Busan">Busan</option>
+<option value="Cairo">Cairo</option>
+<option value="Calgary">Calgary</option>
+<option value="Cape Town">Cape Town</option>
+<option value="Chengdu">Chengdu</option>
+<option value="Chennai">Chennai</option>
+<option value="Chiang Mai">Chiang Mai</option>
+<option value="Chicago">Chicago</option>
+<option value="Da Nang">Da Nang</option>
+<option value="Delhi">Delhi</option>
+<option value="Dubai">Dubai</option>
+<option value="Durban">Durban</option>
+<option value="Edinburgh">Edinburgh</option>
+<option value="Frankfurt">Frankfurt</option>
+<option value="Fukuoka">Fukuoka</option>
+<option value="Guangzhou">Guangzhou</option>
+<option value="Hamburg">Hamburg</option>
+<option value="Hanoi">Hanoi</option>
+<option value="Ho Chi Minh City">Ho Chi Minh City</option>
+<option value="Houston">Houston</option>
+<option value="Hyderabad">Hyderabad</option>
+<option value="Incheon">Incheon</option>
+<option value="Istanbul">Istanbul</option>
+<option value="Izmir">Izmir</option>
+<option value="Jakarta">Jakarta</option>
+<option value="Johannesburg">Johannesburg</option>
+<option value="Johor Bahru">Johor Bahru</option>
+<option value="Kolkata">Kolkata</option>
+<option value="Kuala Lumpur">Kuala Lumpur</option>
+<option value="London">London</option>
+<option value="Los Angeles">Los Angeles</option>
+<option value="Lyon">Lyon</option>
+<option value="Madrid">Madrid</option>
+<option value="Manchester">Manchester</option>
+<option value="Marseille">Marseille</option>
+<option value="Melbourne">Melbourne</option>
+<option value="Miami">Miami</option>
+<option value="Milan">Milan</option>
+<option value="Montreal">Montreal</option>
+<option value="Moscow">Moscow</option>
+<option value="Mumbai">Mumbai</option>
+<option value="Munich">Munich</option>
+<option value="Nagoya">Nagoya</option>
+<option value="Naples">Naples</option>
+<option value="New York">New York</option>
+<option value="Nice">Nice</option>
+<option value="Novosibirsk">Novosibirsk</option>
+<option value="Osaka">Osaka</option>
+<option value="Paris">Paris</option>
+<option value="Penang">Penang</option>
+<option value="Perth">Perth</option>
+<option value="Phuket">Phuket</option>
+<option value="Rio de Janeiro">Rio de Janeiro</option>
+<option value="Rome">Rome</option>
+<option value="Rotterdam">Rotterdam</option>
+<option value="Salvador">Salvador</option>
+<option value="San Francisco">San Francisco</option>
+<option value="Sapporo">Sapporo</option>
+<option value="Seattle">Seattle</option>
+<option value="Seoul">Seoul</option>
+<option value="Seville">Seville</option>
+<option value="Shanghai">Shanghai</option>
+<option value="Sharjah">Sharjah</option>
+<option value="Sharm El Sheikh">Sharm El Sheikh</option>
+<option value="Shenzhen">Shenzhen</option>
+<option value="Singapore">Singapore</option>
+<option value="St Petersburg">St Petersburg</option>
+<option value="Surabaya">Surabaya</option>
+<option value="Sydney">Sydney</option>
+<option value="São Paulo">São Paulo</option>
+<option value="The Hague">The Hague</option>
+<option value="Tokyo">Tokyo</option>
+<option value="Toronto">Toronto</option>
+<option value="Valencia">Valencia</option>
+<option value="Vancouver">Vancouver</option>
+<option value="Venice">Venice</option>
+<option value="Xi'an">Xi'an</option>
+<option value="Yekaterinburg">Yekaterinburg</option>
+            </select>
+            <select id="end">
+                <option value="">Select End City</option>
+                <option value="Abu Dhabi">Abu Dhabi</option>
+<option value="Adelaide">Adelaide</option>
+<option value="Alexandria">Alexandria</option>
+<option value="Amsterdam">Amsterdam</option>
+<option value="Ankara">Ankara</option>
+<option value="Antalya">Antalya</option>
+<option value="Bali">Bali</option>
+<option value="Bangalore">Bangalore</option>
+<option value="Bangkok">Bangkok</option>
+<option value="Barcelona">Barcelona</option>
+<option value="Beijing">Beijing</option>
+<option value="Berlin">Berlin</option>
+<option value="Birmingham">Birmingham</option>
+<option value="Brasília">Brasília</option>
+<option value="Brisbane">Brisbane</option>
+<option value="Busan">Busan</option>
+<option value="Cairo">Cairo</option>
+<option value="Calgary">Calgary</option>
+<option value="Cape Town">Cape Town</option>
+<option value="Chengdu">Chengdu</option>
+<option value="Chennai">Chennai</option>
+<option value="Chiang Mai">Chiang Mai</option>
+<option value="Chicago">Chicago</option>
+<option value="Da Nang">Da Nang</option>
+<option value="Delhi">Delhi</option>
+<option value="Dubai">Dubai</option>
+<option value="Durban">Durban</option>
+<option value="Edinburgh">Edinburgh</option>
+<option value="Frankfurt">Frankfurt</option>
+<option value="Fukuoka">Fukuoka</option>
+<option value="Guangzhou">Guangzhou</option>
+<option value="Hamburg">Hamburg</option>
+<option value="Hanoi">Hanoi</option>
+<option value="Ho Chi Minh City">Ho Chi Minh City</option>
+<option value="Houston">Houston</option>
+<option value="Hyderabad">Hyderabad</option>
+<option value="Incheon">Incheon</option>
+<option value="Istanbul">Istanbul</option>
+<option value="Izmir">Izmir</option>
+<option value="Jakarta">Jakarta</option>
+<option value="Johannesburg">Johannesburg</option>
+<option value="Johor Bahru">Johor Bahru</option>
+<option value="Kolkata">Kolkata</option>
+<option value="Kuala Lumpur">Kuala Lumpur</option>
+<option value="London">London</option>
+<option value="Los Angeles">Los Angeles</option>
+<option value="Lyon">Lyon</option>
+<option value="Madrid">Madrid</option>
+<option value="Manchester">Manchester</option>
+<option value="Marseille">Marseille</option>
+<option value="Melbourne">Melbourne</option>
+<option value="Miami">Miami</option>
+<option value="Milan">Milan</option>
+<option value="Montreal">Montreal</option>
+<option value="Moscow">Moscow</option>
+<option value="Mumbai">Mumbai</option>
+<option value="Munich">Munich</option>
+<option value="Nagoya">Nagoya</option>
+<option value="Naples">Naples</option>
+<option value="New York">New York</option>
+<option value="Nice">Nice</option>
+<option value="Novosibirsk">Novosibirsk</option>
+<option value="Osaka">Osaka</option>
+<option value="Paris">Paris</option>
+<option value="Penang">Penang</option>
+<option value="Perth">Perth</option>
+<option value="Phuket">Phuket</option>
+<option value="Rio de Janeiro">Rio de Janeiro</option>
+<option value="Rome">Rome</option>
+<option value="Rotterdam">Rotterdam</option>
+<option value="Salvador">Salvador</option>
+<option value="San Francisco">San Francisco</option>
+<option value="Sapporo">Sapporo</option>
+<option value="Seattle">Seattle</option>
+<option value="Seoul">Seoul</option>
+<option value="Seville">Seville</option>
+<option value="Shanghai">Shanghai</option>
+<option value="Sharjah">Sharjah</option>
+<option value="Sharm El Sheikh">Sharm El Sheikh</option>
+<option value="Shenzhen">Shenzhen</option>
+<option value="Singapore">Singapore</option>
+<option value="St Petersburg">St Petersburg</option>
+<option value="Surabaya">Surabaya</option>
+<option value="Sydney">Sydney</option>
+<option value="São Paulo">São Paulo</option>
+<option value="The Hague">The Hague</option>
+<option value="Tokyo">Tokyo</option>
+<option value="Toronto">Toronto</option>
+<option value="Valencia">Valencia</option>
+<option value="Vancouver">Vancouver</option>
+<option value="Venice">Venice</option>
+<option value="Xi'an">Xi'an</option>
+<option value="Yekaterinburg">Yekaterinburg</option>
+            </select>
+            <button class="find-route-btn" onclick="findRoute()">
+                <i class="fas fa-search"></i> Find Shortest Route
+            </button>
+            <div id="routeInfo"></div>
+        </div>
         
-        <div class="control-panel">
-            <h3 style="margin-top: 0; color: #333;">Route Planner</h3>
-            <select id="source">
-                <option value="">Select Source City</option>
-                <option value="Beijing, China">Beijing, China</option>
-<option value="Berlin, Germany">Berlin, Germany</option>
-<option value="Cairo, Egypt">Cairo, Egypt</option>
-<option value="Cape Town, South Africa">Cape Town, South Africa</option>
-<option value="Dubai, UAE">Dubai, UAE</option>
-<option value="Istanbul, Turkey">Istanbul, Turkey</option>
-<option value="London, UK">London, UK</option>
-<option value="Moscow, Russia">Moscow, Russia</option>
-<option value="Mumbai, India">Mumbai, India</option>
-<option value="New York, USA">New York, USA</option>
-<option value="Paris, France">Paris, France</option>
-<option value="Singapore, Singapore">Singapore, Singapore</option>
-<option value="Sydney, Australia">Sydney, Australia</option>
-<option value="São Paulo, Brazil">São Paulo, Brazil</option>
-<option value="Tokyo, Japan">Tokyo, Japan</option>
-            </select>
-            <select id="destination">
-                <option value="">Select Destination City</option>
-                <option value="Beijing, China">Beijing, China</option>
-<option value="Berlin, Germany">Berlin, Germany</option>
-<option value="Cairo, Egypt">Cairo, Egypt</option>
-<option value="Cape Town, South Africa">Cape Town, South Africa</option>
-<option value="Dubai, UAE">Dubai, UAE</option>
-<option value="Istanbul, Turkey">Istanbul, Turkey</option>
-<option value="London, UK">London, UK</option>
-<option value="Moscow, Russia">Moscow, Russia</option>
-<option value="Mumbai, India">Mumbai, India</option>
-<option value="New York, USA">New York, USA</option>
-<option value="Paris, France">Paris, France</option>
-<option value="Singapore, Singapore">Singapore, Singapore</option>
-<option value="Sydney, Australia">Sydney, Australia</option>
-<option value="São Paulo, Brazil">São Paulo, Brazil</option>
-<option value="Tokyo, Japan">Tokyo, Japan</option>
-            </select>
-            <button class="calculate-btn" onclick="calculateRoute()">
-                <i class="fas fa-route"></i> Calculate Route
-            </button>
-        </div>
-
-        <div class="stats-panel" id="statsPanel">
-            <h4 style="margin-top: 0; color: #333;">Route Information</h4>
-            <div id="routeStats"></div>
-        </div>
-
-        <div class="zoom-controls">
-            <button class="zoom-btn" onclick="map.zoomIn()"><i class="fas fa-plus"></i></button>
-            <button class="zoom-btn" onclick="map.zoomOut()"><i class="fas fa-minus"></i></button>
-        </div>
-
-        <div class="theme-controls">
-            <button class="theme-btn active" onclick="setMapTheme('light')">
-                <i class="fas fa-sun"></i> Light
-            </button>
-            <button class="theme-btn" onclick="setMapTheme('dark')">
-                <i class="fas fa-moon"></i> Dark
-            </button>
-        </div>
+        <button class="theme-toggle" onclick="toggleTheme()">
+            <i class="fas fa-moon"></i> <span id="themeText">Dark Mode</span>
+        </button>
 
         <script>
-        // Initialize map with fixed bounds and no repetition
-        let map = L.map('map', {
-            center: [20, 0],
-            zoom: 2,
-            minZoom: 2,
-            maxZoom: 8,
-            maxBounds: [[-90, -180], [90, 180]],
-            maxBoundsViscosity: 1.0,
-            worldCopyJump: false,
-            zoomControl: false
-        });
-
-        // Store current theme and map elements
-        let currentTheme = 'light';
-        let currentTileLayer = null;
-        let currentMarkers = [];
-        let currentPath = null;
-        const locations = {"New York, USA": [40.712776, -74.005974], "London, UK": [51.507351, -0.127758], "Tokyo, Japan": [35.689487, 139.691711], "Paris, France": [48.856613, 2.352222], "Beijing, China": [39.904202, 116.407394], "Sydney, Australia": [-33.86882, 151.20929], "Dubai, UAE": [25.276987, 55.296249], "Singapore, Singapore": [1.352083, 103.819839], "Mumbai, India": [19.07609, 72.877426], "Istanbul, Turkey": [41.00824, 28.978359], "S\u00e3o Paulo, Brazil": [-23.55052, -46.633308], "Cairo, Egypt": [30.04442, 31.235712], "Cape Town, South Africa": [-33.92487, 18.424055], "Moscow, Russia": [55.755825, 37.617298], "Berlin, Germany": [52.520008, 13.404954]};
-
-        // Initialize with light theme
-        setMapTheme('light');
-
-        function setMapTheme(theme) {
-            // Remove current tile layer if exists
-            if (currentTileLayer) {
-                map.removeLayer(currentTileLayer);
-            }
-
-            // Update theme buttons
-            document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelector(`.theme-btn:${theme === 'light' ? 'first-child' : 'last-child'}`).classList.add('active');
-
-            // Set new tile layer based on theme
-            const tileUrl = theme === 'light' 
-                ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
-                : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-
-            currentTileLayer = L.tileLayer(tileUrl, {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-                subdomains: 'abcd',
-                maxZoom: 8,
-                minZoom: 2,
-                noWrap: true,
-                bounds: [[-90, -180], [90, 180]],
+            // Initialize map with no wrapping
+            var map = L.map('map', {
+                worldCopyJump: false,
                 maxBounds: [[-90, -180], [90, 180]],
                 maxBoundsViscosity: 1.0
-            }).addTo(map);
+            }).setView([20, 0], 2);
 
-            currentTheme = theme;
-
-            // Update path color if exists
-            if (currentPath) {
-                currentPath.setStyle({
-                    color: theme === 'light' ? '#4CAF50' : '#69f0ae'
-                });
-            }
-        }
-
-        function calculateRoute() {
-            // Clear previous route
-            clearRoute();
-
-            const source = document.getElementById('source').value;
-            const destination = document.getElementById('destination').value;
-
-            if (!source || !destination) {
-                alert('Please select both source and destination cities');
-                return;
-            }
-
-            if (source === destination) {
-                alert('Please select different cities for source and destination');
-                return;
-            }
-
-            const sourceCoords = locations[source];
-            const destCoords = locations[destination];
-
-            // Add markers
-            addMarker(sourceCoords, '#4CAF50', source);
-            addMarker(destCoords, '#f44336', destination);
-
-            // Draw route
-            drawRoute(sourceCoords, destCoords);
-
-            // Calculate and display stats
-            updateStats(source, destination);
-
-            // Fit bounds with restrictions
-            const bounds = L.latLngBounds([sourceCoords, destCoords]);
-            map.fitBounds(bounds, {
-                padding: [50, 50],
-                maxZoom: 8,
-                animate: true
+            var lightTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                noWrap: true,
+                bounds: [[-90, -180], [90, 180]],
+                attribution: '© OpenStreetMap contributors'
             });
-        }
-
-        function addMarker(coords, color, city) {
-            const marker = L.marker(coords, {
-                icon: L.divIcon({
-                    className: 'custom-marker',
-                    html: `<div style="background-color: ${color}; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.3);"></div>`,
-                    iconSize: [16, 16]
-                })
-            }).addTo(map);
-
-            marker.bindPopup(`<b>${city}</b><br>Lat: ${coords[0].toFixed(4)}<br>Lon: ${coords[1].toFixed(4)}`);
-            currentMarkers.push(marker);
-        }
-
-        function drawRoute(start, end) {
-            // Calculate the two possible paths
-            const path1 = [start, end];
-            const path2 = [
-                start,
-                [end[0], end[1] + (end[1] < start[1] ? 360 : -360)]
-            ];
-
-            // Calculate which path is shorter
-            const d1 = Math.abs(start[1] - end[1]);
-            const d2 = Math.abs(start[1] - (end[1] + (end[1] < start[1] ? 360 : -360)));
-
-            currentPath = L.polyline(d1 < d2 ? path1 : path2, {
-                color: currentTheme === 'light' ? '#4CAF50' : '#69f0ae',
-                weight: 3,
-                opacity: 0.8,
-                className: 'route-line'
-            }).addTo(map);
-        }
-
-        function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371; // Earth's radius in km
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = 
-                Math.sin(dLat/2) * Math.sin(dLat/2) +
-                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-                Math.sin(dLon/2) * Math.sin(dLon/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            return Math.round(R * c);
-        }
-
-        function updateStats(source, dest) {
-            const [lat1, lon1] = locations[source];
-            const [lat2, lon2] = locations[dest];
-            const distance = calculateDistance(lat1, lon1, lat2, lon2);
             
-            // Calculate flight time (assuming 800 km/h average speed)
-            const hours = Math.floor(distance / 800);
-            const minutes = Math.round((distance / 800 % 1) * 60);
+            var darkTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                noWrap: true,
+                bounds: [[-90, -180], [90, 180]],
+                attribution: '© OpenStreetMap contributors'
+            });
             
-            // Calculate time difference based on longitude
-            const timeDiff = Math.round((lon2 - lon1) * 24 / 360);
+            lightTiles.addTo(map);
 
-            document.getElementById('routeStats').innerHTML = `
-                <div style="margin: 10px 0;">
-                    <div style="display: flex; justify-content: space-between; margin: 5px 0;">
-                        <span>Distance:</span>
-                        <strong>${distance.toLocaleString()} km</strong>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin: 5px 0;">
-                        <span>Est. Flight Time:</span>
-                        <strong>${hours}h ${minutes}m</strong>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin: 5px 0;">
-                        <span>Time Difference:</span>
-                        <strong>${Math.abs(timeDiff)}h ${timeDiff >= 0 ? 'ahead' : 'behind'}</strong>
-                    </div>
-                </div>
-            `;
-            
-            document.getElementById('statsPanel').style.display = 'block';
-        }
+            var currentTheme = 'light';
+            var currentTiles = lightTiles;
 
-        function clearRoute() {
-            currentMarkers.forEach(marker => map.removeLayer(marker));
-            currentMarkers = [];
-            if (currentPath) {
-                map.removeLayer(currentPath);
-                currentPath = null;
+            function toggleTheme() {
+                const body = document.body;
+                const themeText = document.getElementById('themeText');
+                const themeIcon = document.querySelector('.theme-toggle i');
+                
+                if (currentTheme === 'light') {
+                    body.setAttribute('data-theme', 'dark');
+                    map.removeLayer(currentTiles);
+                    darkTiles.addTo(map);
+                    currentTiles = darkTiles;
+                    currentTheme = 'dark';
+                    themeText.textContent = 'Light Mode';
+                    themeIcon.className = 'fas fa-sun';
+                } else {
+                    body.setAttribute('data-theme', 'light');
+                    map.removeLayer(currentTiles);
+                    lightTiles.addTo(map);
+                    currentTiles = lightTiles;
+                    currentTheme = 'light';
+                    themeText.textContent = 'Dark Mode';
+                    themeIcon.className = 'fas fa-moon';
+                }
             }
-            document.getElementById('statsPanel').style.display = 'none';
-        }
+
+            var markers = [];
+            var paths = [];
+            const locations = {"New York": [40.7128, -74.006], "Los Angeles": [34.0522, -118.2437], "Chicago": [41.8781, -87.6298], "Miami": [25.7617, -80.1918], "San Francisco": [37.7749, -122.4194], "Houston": [29.7604, -95.3698], "Seattle": [47.6062, -122.3321], "London": [51.5074, -0.1278], "Manchester": [53.4808, -2.2426], "Birmingham": [52.4862, -1.8904], "Edinburgh": [55.9533, -3.1883], "Berlin": [52.52, 13.405], "Munich": [48.1351, 11.582], "Frankfurt": [50.1109, 8.6821], "Hamburg": [53.5511, 9.9937], "Paris": [48.8566, 2.3522], "Lyon": [45.764, 4.8357], "Marseille": [43.2965, 5.3698], "Nice": [43.7102, 7.262], "Madrid": [40.4168, -3.7038], "Barcelona": [41.3851, 2.1734], "Valencia": [39.4699, -0.3763], "Seville": [37.3891, -5.9845], "Rome": [41.9028, 12.4964], "Milan": [45.4642, 9.19], "Venice": [45.4408, 12.3155], "Naples": [40.8518, 14.2681], "Tokyo": [35.6762, 139.6503], "Osaka": [34.6937, 135.5023], "Nagoya": [35.1815, 136.9066], "Fukuoka": [33.5902, 130.4017], "Sapporo": [43.0618, 141.3545], "Beijing": [39.9042, 116.4074], "Shanghai": [31.2304, 121.4737], "Guangzhou": [23.1291, 113.2644], "Shenzhen": [22.5431, 114.0579], "Chengdu": [30.5728, 104.0668], "Xi'an": [34.3416, 108.9398], "Mumbai": [19.076, 72.8777], "Delhi": [28.6139, 77.209], "Bangalore": [12.9716, 77.5946], "Chennai": [13.0827, 80.2707], "Kolkata": [22.5726, 88.3639], "Hyderabad": [17.385, 78.4867], "Sydney": [-33.8688, 151.2093], "Melbourne": [-37.8136, 144.9631], "Brisbane": [-27.4705, 153.026], "Perth": [-31.9505, 115.8605], "Adelaide": [-34.9285, 138.6007], "Moscow": [55.7558, 37.6173], "St Petersburg": [59.9311, 30.3609], "Novosibirsk": [55.0084, 82.9357], "Yekaterinburg": [56.8389, 60.6057], "Seoul": [37.5665, 126.978], "Busan": [35.1796, 129.0756], "Incheon": [37.4563, 126.7052], "Singapore": [1.3521, 103.8198], "Dubai": [25.2048, 55.2708], "Abu Dhabi": [24.4539, 54.3773], "Sharjah": [25.3462, 55.4211], "Bangkok": [13.7563, 100.5018], "Phuket": [7.8804, 98.3923], "Chiang Mai": [18.7883, 98.9853], "Rio de Janeiro": [-22.9068, -43.1729], "S\u00e3o Paulo": [-23.5505, -46.6333], "Bras\u00edlia": [-15.7975, -47.8919], "Salvador": [-12.9714, -38.5014], "Toronto": [43.6532, -79.3832], "Vancouver": [49.2827, -123.1207], "Montreal": [45.5017, -73.5673], "Calgary": [51.0447, -114.0719], "Amsterdam": [52.3676, 4.9041], "Rotterdam": [51.9244, 4.4777], "The Hague": [52.0705, 4.3007], "Istanbul": [41.0082, 28.9784], "Ankara": [39.9334, 32.8597], "Antalya": [36.8969, 30.7133], "Izmir": [38.4237, 27.1428], "Kuala Lumpur": [3.139, 101.6869], "Penang": [5.4141, 100.3288], "Johor Bahru": [1.4927, 103.7414], "Jakarta": [-6.2088, 106.8456], "Bali": [-8.3405, 115.092], "Surabaya": [-7.2575, 112.7521], "Ho Chi Minh City": [10.8231, 106.6297], "Hanoi": [21.0285, 105.8542], "Da Nang": [16.0544, 108.2022], "Cape Town": [-33.9249, 18.4241], "Johannesburg": [-26.2041, 28.0473], "Durban": [-29.8587, 31.0218], "Cairo": [30.0444, 31.2357], "Alexandria": [31.2001, 29.9187], "Sharm El Sheikh": [27.9158, 34.33]};
+            const graph = {"New York": {"Chicago": 1190, "Miami": 1757, "London": 5570, "Paris": 5837, "S\u00e3o Paulo": 7658}, "Chicago": {"New York": 1190, "Houston": 1514, "London": 6347}, "Miami": {"New York": 1757, "Houston": 1565, "Madrid": 7103}, "Los Angeles": {"San Francisco": 629, "London": 8780, "Tokyo": 8819}, "San Francisco": {"Los Angeles": 629, "Seattle": 1300}, "Houston": {"Chicago": 1514, "Miami": 1565}, "Seattle": {"San Francisco": 1300}, "London": {"Manchester": 261, "Edinburgh": 534, "New York": 5570, "Chicago": 6347, "Los Angeles": 8780, "Toronto": 5711, "Paris": 344, "Hong Kong": 9647, "Cape Town": 9670, "Dubai": 5502}, "Manchester": {"London": 261, "Birmingham": 116}, "Edinburgh": {"London": 534}, "Birmingham": {"Manchester": 116}, "Berlin": {"Munich": 584, "Paris": 878}, "Munich": {"Berlin": 584, "Hamburg": 776}, "Frankfurt": {"Hamburg": 495, "Amsterdam": 355}, "Hamburg": {"Frankfurt": 495, "Munich": 776}, "Paris": {"New York": 5837, "London": 344, "Berlin": 878, "Amsterdam": 431, "Madrid": 1052, "Rome": 1106}, "Toronto": {"London": 5711}, "Madrid": {"Miami": 7103, "Paris": 1052}, "Amsterdam": {"Paris": 431, "Frankfurt": 355}, "Rome": {"Paris": 1106}, "Tokyo": {"Seoul": 1157, "Beijing": 2098, "Shanghai": 1766, "Los Angeles": 8819}, "Seoul": {"Tokyo": 1157}, "Beijing": {"Tokyo": 2098, "Moscow": 5800}, "Shanghai": {"Tokyo": 1766, "Hong Kong": 1255, "Singapore": 3840}, "Hong Kong": {"Shanghai": 1255, "Sydney": 7398, "London": 9647}, "Singapore": {"Bangkok": 1430, "Kuala Lumpur": 316, "Jakarta": 880, "Perth": 3915, "Sydney": 6300, "Shanghai": 3840}, "Bangkok": {"Singapore": 1430, "Dubai": 4890}, "Kuala Lumpur": {"Singapore": 316}, "Jakarta": {"Singapore": 880}, "Dubai": {"Mumbai": 1920, "Delhi": 2200, "Istanbul": 3010, "Sydney": 12051, "Cairo": 2520, "Bangkok": 4890, "London": 5502}, "Mumbai": {"Dubai": 1920, "Abu Dhabi": 1967}, "Delhi": {"Dubai": 2200}, "Abu Dhabi": {"Mumbai": 1967}, "Istanbul": {"Dubai": 3010}, "Sydney": {"Melbourne": 713, "Brisbane": 753, "Perth": 3290, "Dubai": 12051, "Hong Kong": 7398, "Singapore": 6300}, "Melbourne": {"Sydney": 713}, "Brisbane": {"Sydney": 753}, "Perth": {"Sydney": 3290, "Singapore": 3915}, "S\u00e3o Paulo": {"Rio de Janeiro": 429, "Bras\u00edlia": 873, "New York": 7658}, "Rio de Janeiro": {"S\u00e3o Paulo": 429, "Salvador": 1209}, "Bras\u00edlia": {"S\u00e3o Paulo": 873}, "Salvador": {"Rio de Janeiro": 1209}, "Cairo": {"Dubai": 2520, "Johannesburg": 6310}, "Johannesburg": {"Cairo": 6310, "Cape Town": 1270}, "Cape Town": {"Johannesburg": 1270, "London": 9670}, "Moscow": {"Beijing": 5800}};
+
+            function dijkstra(start, end) {
+                const distances = {};
+                const previous = {};
+                const pq = [];
+                
+                Object.keys(graph).forEach(vertex => {
+                    distances[vertex] = Infinity;
+                    previous[vertex] = null;
+                });
+                
+                distances[start] = 0;
+                pq.push([0, start]);
+                
+                while (pq.length > 0) {
+                    pq.sort((a, b) => a[0] - b[0]);
+                    const [currentDistance, currentVertex] = pq.shift();
+                    
+                    if (currentVertex === end) break;
+                    if (currentDistance > distances[currentVertex]) continue;
+                    
+                    Object.entries(graph[currentVertex] || {}).forEach(([neighbor, weight]) => {
+                        const distance = currentDistance + weight;
+                        if (distance < distances[neighbor]) {
+                            distances[neighbor] = distance;
+                            previous[neighbor] = currentVertex;
+                            pq.push([distance, neighbor]);
+                        }
+                    });
+                }
+                
+                const path = [];
+                let current = end;
+                while (current !== null) {
+                    path.unshift(current);
+                    current = previous[current];
+                }
+                
+                return [path, distances[end]];
+            }
+
+            function clearMap() {
+                markers.forEach(marker => map.removeLayer(marker));
+                paths.forEach(path => map.removeLayer(path));
+                markers = [];
+                paths = [];
+            }
+
+            function findRoute() {
+                const start = document.getElementById('start').value;
+                const end = document.getElementById('end').value;
+                
+                if (!start || !end) {
+                    alert('Please select both cities');
+                    return;
+                }
+                
+                clearMap();
+                
+                const [path, distance] = dijkstra(start, end);
+                
+                if (!path.length) {
+                    alert('No route found');
+                    return;
+                }
+                
+                // Add markers and path
+                path.forEach((city, index) => {
+                    const marker = L.circleMarker(locations[city], {
+                        radius: 8,
+                        fillColor: index === 0 ? '#4CAF50' : (index === path.length - 1 ? '#f44336' : '#2196F3'),
+                        color: '#fff',
+                        weight: 2,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    }).addTo(map);
+                    marker.bindPopup(`<b>${city}</b>`);
+                    markers.push(marker);
+                });
+                
+                // Draw path with animation
+                for (let i = 0; i < path.length - 1; i++) {
+                    const line = L.polyline([
+                        locations[path[i]],
+                        locations[path[i + 1]]
+                    ], {
+                        color: '#4CAF50',
+                        weight: 3,
+                        opacity: 0.8,
+                        dashArray: '10, 10'
+                    }).addTo(map);
+                    paths.push(line);
+                }
+                
+                // Calculate estimated flight time (assuming 800 km/h average speed)
+                const flightHours = Math.floor(distance / 800);
+                const flightMinutes = Math.round((distance / 800 % 1) * 60);
+                
+                // Show route info
+                const routeInfo = document.getElementById('routeInfo');
+                routeInfo.style.display = 'block';
+                routeInfo.innerHTML = `
+                    <div class="stats-container">
+                        <div class="stat-card">
+                            <div class="stat-value">${distance.toLocaleString()} km</div>
+                            <div>Total Distance</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${flightHours}h ${flightMinutes}m</div>
+                            <div>Est. Flight Time</div>
+                        </div>
+                    </div>
+                    <div style="font-weight: 600; margin-bottom: 8px;">Route Details:</div>
+                    ${path.map((city, index) => `
+                        <div class="route-step">
+                            ${index + 1}. ${city}
+                        </div>
+                    `).join('')}
+                `;
+                
+                // Fit map to show entire route
+                const bounds = L.latLngBounds(path.map(city => locations[city]));
+                map.fitBounds(bounds, { padding: [50, 50] });
+            }
         </script>
     </body>
     </html>
