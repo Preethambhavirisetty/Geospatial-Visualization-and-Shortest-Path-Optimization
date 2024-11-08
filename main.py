@@ -1,378 +1,359 @@
 import folium
 import json
-from collections import defaultdict
-import heapq
+import requests
+import math
 
 def create_map_html(locations, edges):
-    # Create graph for Dijkstra's algorithm
-    graph = defaultdict(dict)
-    for src, dst, dist in edges:
-        graph[src][dst] = dist
-        graph[dst][src] = dist
-
     custom_html = '''
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Advanced Route Planner</title>
+        <title>World Route Planner</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"/>
         <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
         <style>
-            :root {
-                --bg-color: #ffffff;
-                --text-color: #333333;
-                --card-bg: #ffffff;
-                --border-color: #e0e0e0;
-            }
-            
-            [data-theme="dark"] {
-                --bg-color: #1a1a1a;
-                --text-color: #ffffff;
-                --card-bg: #2d2d2d;
-                --border-color: #404040;
-            }
-            
             body {
                 margin: 0;
                 padding: 0;
-                font-family: 'Segoe UI', Tahoma, sans-serif;
-                background-color: var(--bg-color);
-                color: var(--text-color);
-                transition: background-color 0.3s, color 0.3s;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             }
-            
-            #map { 
-                height: 100vh; 
-                width: 100%;
+            #map {
                 position: absolute;
                 top: 0;
+                bottom: 0;
+                right: 0;
                 left: 0;
-                z-index: 1;
+                height: 100vh !important;
+                width: 100vw !important;
             }
-            
-            .control-container {
-                position: absolute;
+            .control-panel {
+                position: fixed;
                 top: 20px;
                 right: 20px;
                 z-index: 1000;
-                background: var(--card-bg);
+                background-color: rgba(255, 255, 255, 0.95);
                 padding: 20px;
-                border-radius: 12px;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                width: 320px;
+                border-radius: 15px;
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+                max-width: 320px;
                 backdrop-filter: blur(10px);
-                border: 1px solid var(--border-color);
             }
-            
-            .title {
-                margin: 0 0 15px 0;
-                font-size: 1.5em;
-                font-weight: 600;
-                color: var(--text-color);
+            .theme-controls {
+                position: fixed;
+                bottom: 30px;
+                right: 20px;
+                z-index: 1000;
+                background-color: rgba(255, 255, 255, 0.95);
+                padding: 10px;
+                border-radius: 10px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
                 display: flex;
-                align-items: center;
-                justify-content: space-between;
+                gap: 10px;
             }
-            
             select {
                 width: 100%;
                 padding: 10px;
                 margin: 8px 0;
-                border: 1px solid var(--border-color);
+                border: 1px solid #ddd;
                 border-radius: 8px;
-                background: var(--bg-color);
-                color: var(--text-color);
+                background-color: white;
                 font-size: 14px;
-                appearance: none;
             }
-            
-            .find-route-btn {
+            .calculate-btn {
                 width: 100%;
-                padding: 12px;
-                margin: 10px 0;
-                border: none;
-                border-radius: 8px;
-                background: #4CAF50;
+                background-color: #4CAF50;
                 color: white;
-                font-weight: 600;
+                border: none;
+                padding: 12px;
+                border-radius: 8px;
                 cursor: pointer;
-                transition: background 0.3s;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 8px;
-            }
-            
-            .find-route-btn:hover {
-                background: #45a049;
-            }
-            
-            #routeInfo {
                 margin-top: 15px;
-                padding: 15px;
-                background: var(--card-bg);
-                border-radius: 8px;
-                border: 1px solid var(--border-color);
-                display: none;
-            }
-            
-            .theme-toggle {
-                position: absolute;
-                bottom: 20px;
-                right: 20px;
-                z-index: 1000;
-                padding: 10px;
-                border-radius: 8px;
-                background: var(--card-bg);
-                border: 1px solid var(--border-color);
-                color: var(--text-color);
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                gap: 8px;
-            }
-            
-            .route-step {
-                padding: 8px;
-                margin: 4px 0;
-                background: var(--bg-color);
-                border-radius: 4px;
-                border: 1px solid var(--border-color);
-            }
-            
-            .stats-container {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 10px;
-                margin-bottom: 15px;
-            }
-            
-            .stat-card {
-                background: var(--bg-color);
-                padding: 10px;
-                border-radius: 8px;
-                border: 1px solid var(--border-color);
-                text-align: center;
-            }
-            
-            .stat-value {
-                font-size: 1.2em;
                 font-weight: 600;
-                color: #4CAF50;
+                transition: all 0.3s ease;
             }
-            
-            .animation {
-                animation: fadeIn 0.3s ease-in;
+            .calculate-btn:hover {
+                background-color: #45a049;
             }
-            
-            @keyframes fadeIn {
-                from { opacity: 0; transform: translateY(-10px); }
-                to { opacity: 1; transform: translateY(0); }
+            .stats-panel {
+                position: fixed;
+                bottom: 30px;
+                left: 20px;
+                z-index: 1000;
+                background-color: rgba(255, 255, 255, 0.95);
+                padding: 15px;
+                border-radius: 15px;
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+                display: none;
+                backdrop-filter: blur(10px);
+                min-width: 250px;
+            }
+            .theme-btn {
+                padding: 8px 15px;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                background-color: #f8f9fa;
+                transition: all 0.3s ease;
+            }
+            .theme-btn.active {
+                background-color: #4CAF50;
+                color: white;
+            }
+            .zoom-controls {
+                position: fixed;
+                right: 20px;
+                top: 50%;
+                transform: translateY(-50%);
+                z-index: 1000;
+                background-color: rgba(255, 255, 255, 0.95);
+                border-radius: 10px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            }
+            .zoom-btn {
+                display: block;
+                width: 40px;
+                height: 40px;
+                border: none;
+                background-color: white;
+                cursor: pointer;
+                font-size: 18px;
+                color: #333;
+            }
+            .route-line {
+                stroke-dasharray: 8, 8;
+                animation: dash 20s linear infinite;
+            }
+            @keyframes dash {
+                to {
+                    stroke-dashoffset: -1000;
+                }
             }
         </style>
     </head>
     <body>
         <div id="map"></div>
-        <div class="control-container animation">
-            <div class="title">
-                <span><i class="fas fa-route"></i> Route Planner</span>
-            </div>
-            <select id="start">
-                <option value="">Select Start City</option>
-                ''' + '\n'.join([f'<option value="{city}">{city}</option>' for city in sorted(locations.keys())]) + '''
-            </select>
-            <select id="end">
-                <option value="">Select End City</option>
-                ''' + '\n'.join([f'<option value="{city}">{city}</option>' for city in sorted(locations.keys())]) + '''
-            </select>
-            <button class="find-route-btn" onclick="findRoute()">
-                <i class="fas fa-search"></i> Find Shortest Route
-            </button>
-            <div id="routeInfo"></div>
-        </div>
         
-        <button class="theme-toggle" onclick="toggleTheme()">
-            <i class="fas fa-moon"></i> <span id="themeText">Dark Mode</span>
-        </button>
+        <div class="control-panel">
+            <h3 style="margin-top: 0; color: #333;">Route Planner</h3>
+            <select id="source">
+                <option value="">Select Source City</option>
+                ''' + "\n".join([f'<option value="{city}">{city}</option>' for city in sorted(locations.keys())]) + '''
+            </select>
+            <select id="destination">
+                <option value="">Select Destination City</option>
+                ''' + "\n".join([f'<option value="{city}">{city}</option>' for city in sorted(locations.keys())]) + '''
+            </select>
+            <button class="calculate-btn" onclick="calculateRoute()">
+                <i class="fas fa-route"></i> Calculate Route
+            </button>
+        </div>
+
+        <div class="stats-panel" id="statsPanel">
+            <h4 style="margin-top: 0; color: #333;">Route Information</h4>
+            <div id="routeStats"></div>
+        </div>
+
+        <div class="zoom-controls">
+            <button class="zoom-btn" onclick="map.zoomIn()"><i class="fas fa-plus"></i></button>
+            <button class="zoom-btn" onclick="map.zoomOut()"><i class="fas fa-minus"></i></button>
+        </div>
+
+        <div class="theme-controls">
+            <button class="theme-btn active" onclick="setMapTheme('light')">
+                <i class="fas fa-sun"></i> Light
+            </button>
+            <button class="theme-btn" onclick="setMapTheme('dark')">
+                <i class="fas fa-moon"></i> Dark
+            </button>
+        </div>
 
         <script>
-            // Initialize map with no wrapping
-            var map = L.map('map', {
-                worldCopyJump: false,
+        // Initialize map with fixed bounds and no repetition
+        let map = L.map('map', {
+            center: [20, 0],
+            zoom: 2,
+            minZoom: 2,
+            maxZoom: 8,
+            maxBounds: [[-90, -180], [90, 180]],
+            maxBoundsViscosity: 1.0,
+            worldCopyJump: false,
+            zoomControl: false
+        });
+
+        // Store current theme and map elements
+        let currentTheme = 'light';
+        let currentTileLayer = null;
+        let currentMarkers = [];
+        let currentPath = null;
+        const locations = ''' + json.dumps(locations) + ''';
+
+        // Initialize with light theme
+        setMapTheme('light');
+
+        function setMapTheme(theme) {
+            // Remove current tile layer if exists
+            if (currentTileLayer) {
+                map.removeLayer(currentTileLayer);
+            }
+
+            // Update theme buttons
+            document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`.theme-btn:${theme === 'light' ? 'first-child' : 'last-child'}`).classList.add('active');
+
+            // Set new tile layer based on theme
+            const tileUrl = theme === 'light' 
+                ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+                : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+
+            currentTileLayer = L.tileLayer(tileUrl, {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+                subdomains: 'abcd',
+                maxZoom: 8,
+                minZoom: 2,
+                noWrap: true,
+                bounds: [[-90, -180], [90, 180]],
                 maxBounds: [[-90, -180], [90, 180]],
                 maxBoundsViscosity: 1.0
-            }).setView([20, 0], 2);
+            }).addTo(map);
 
-            var lightTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-                noWrap: true,
-                bounds: [[-90, -180], [90, 180]],
-                attribution: '© OpenStreetMap contributors'
-            });
-            
-            var darkTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                noWrap: true,
-                bounds: [[-90, -180], [90, 180]],
-                attribution: '© OpenStreetMap contributors'
-            });
-            
-            lightTiles.addTo(map);
+            currentTheme = theme;
 
-            var currentTheme = 'light';
-            var currentTiles = lightTiles;
-
-            function toggleTheme() {
-                const body = document.body;
-                const themeText = document.getElementById('themeText');
-                const themeIcon = document.querySelector('.theme-toggle i');
-                
-                if (currentTheme === 'light') {
-                    body.setAttribute('data-theme', 'dark');
-                    map.removeLayer(currentTiles);
-                    darkTiles.addTo(map);
-                    currentTiles = darkTiles;
-                    currentTheme = 'dark';
-                    themeText.textContent = 'Light Mode';
-                    themeIcon.className = 'fas fa-sun';
-                } else {
-                    body.setAttribute('data-theme', 'light');
-                    map.removeLayer(currentTiles);
-                    lightTiles.addTo(map);
-                    currentTiles = lightTiles;
-                    currentTheme = 'light';
-                    themeText.textContent = 'Dark Mode';
-                    themeIcon.className = 'fas fa-moon';
-                }
-            }
-
-            var markers = [];
-            var paths = [];
-            const locations = ''' + json.dumps(locations) + ''';
-            const graph = ''' + json.dumps(dict(graph)) + ''';
-
-            function dijkstra(start, end) {
-                const distances = {};
-                const previous = {};
-                const pq = [];
-                
-                Object.keys(graph).forEach(vertex => {
-                    distances[vertex] = Infinity;
-                    previous[vertex] = null;
+            // Update path color if exists
+            if (currentPath) {
+                currentPath.setStyle({
+                    color: theme === 'light' ? '#4CAF50' : '#69f0ae'
                 });
-                
-                distances[start] = 0;
-                pq.push([0, start]);
-                
-                while (pq.length > 0) {
-                    pq.sort((a, b) => a[0] - b[0]);
-                    const [currentDistance, currentVertex] = pq.shift();
-                    
-                    if (currentVertex === end) break;
-                    if (currentDistance > distances[currentVertex]) continue;
-                    
-                    Object.entries(graph[currentVertex] || {}).forEach(([neighbor, weight]) => {
-                        const distance = currentDistance + weight;
-                        if (distance < distances[neighbor]) {
-                            distances[neighbor] = distance;
-                            previous[neighbor] = currentVertex;
-                            pq.push([distance, neighbor]);
-                        }
-                    });
-                }
-                
-                const path = [];
-                let current = end;
-                while (current !== null) {
-                    path.unshift(current);
-                    current = previous[current];
-                }
-                
-                return [path, distances[end]];
+            }
+        }
+
+        function calculateRoute() {
+            // Clear previous route
+            clearRoute();
+
+            const source = document.getElementById('source').value;
+            const destination = document.getElementById('destination').value;
+
+            if (!source || !destination) {
+                alert('Please select both source and destination cities');
+                return;
             }
 
-            function clearMap() {
-                markers.forEach(marker => map.removeLayer(marker));
-                paths.forEach(path => map.removeLayer(path));
-                markers = [];
-                paths = [];
+            if (source === destination) {
+                alert('Please select different cities for source and destination');
+                return;
             }
 
-            function findRoute() {
-                const start = document.getElementById('start').value;
-                const end = document.getElementById('end').value;
-                
-                if (!start || !end) {
-                    alert('Please select both cities');
-                    return;
-                }
-                
-                clearMap();
-                
-                const [path, distance] = dijkstra(start, end);
-                
-                if (!path.length) {
-                    alert('No route found');
-                    return;
-                }
-                
-                // Add markers and path
-                path.forEach((city, index) => {
-                    const marker = L.circleMarker(locations[city], {
-                        radius: 8,
-                        fillColor: index === 0 ? '#4CAF50' : (index === path.length - 1 ? '#f44336' : '#2196F3'),
-                        color: '#fff',
-                        weight: 2,
-                        opacity: 1,
-                        fillOpacity: 0.8
-                    }).addTo(map);
-                    marker.bindPopup(`<b>${city}</b>`);
-                    markers.push(marker);
-                });
-                
-                // Draw path with animation
-                for (let i = 0; i < path.length - 1; i++) {
-                    const line = L.polyline([
-                        locations[path[i]],
-                        locations[path[i + 1]]
-                    ], {
-                        color: '#4CAF50',
-                        weight: 3,
-                        opacity: 0.8,
-                        dashArray: '10, 10'
-                    }).addTo(map);
-                    paths.push(line);
-                }
-                
-                // Calculate estimated flight time (assuming 800 km/h average speed)
-                const flightHours = Math.floor(distance / 800);
-                const flightMinutes = Math.round((distance / 800 % 1) * 60);
-                
-                // Show route info
-                const routeInfo = document.getElementById('routeInfo');
-                routeInfo.style.display = 'block';
-                routeInfo.innerHTML = `
-                    <div class="stats-container">
-                        <div class="stat-card">
-                            <div class="stat-value">${distance.toLocaleString()} km</div>
-                            <div>Total Distance</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value">${flightHours}h ${flightMinutes}m</div>
-                            <div>Est. Flight Time</div>
-                        </div>
+            const sourceCoords = locations[source];
+            const destCoords = locations[destination];
+
+            // Add markers
+            addMarker(sourceCoords, '#4CAF50', source);
+            addMarker(destCoords, '#f44336', destination);
+
+            // Draw route
+            drawRoute(sourceCoords, destCoords);
+
+            // Calculate and display stats
+            updateStats(source, destination);
+
+            // Fit bounds with restrictions
+            const bounds = L.latLngBounds([sourceCoords, destCoords]);
+            map.fitBounds(bounds, {
+                padding: [50, 50],
+                maxZoom: 8,
+                animate: true
+            });
+        }
+
+        function addMarker(coords, color, city) {
+            const marker = L.marker(coords, {
+                icon: L.divIcon({
+                    className: 'custom-marker',
+                    html: `<div style="background-color: ${color}; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.3);"></div>`,
+                    iconSize: [16, 16]
+                })
+            }).addTo(map);
+
+            marker.bindPopup(`<b>${city}</b><br>Lat: ${coords[0].toFixed(4)}<br>Lon: ${coords[1].toFixed(4)}`);
+            currentMarkers.push(marker);
+        }
+
+        function drawRoute(start, end) {
+            // Calculate the two possible paths
+            const path1 = [start, end];
+            const path2 = [
+                start,
+                [end[0], end[1] + (end[1] < start[1] ? 360 : -360)]
+            ];
+
+            // Calculate which path is shorter
+            const d1 = Math.abs(start[1] - end[1]);
+            const d2 = Math.abs(start[1] - (end[1] + (end[1] < start[1] ? 360 : -360)));
+
+            currentPath = L.polyline(d1 < d2 ? path1 : path2, {
+                color: currentTheme === 'light' ? '#4CAF50' : '#69f0ae',
+                weight: 3,
+                opacity: 0.8,
+                className: 'route-line'
+            }).addTo(map);
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Earth's radius in km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = 
+                Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return Math.round(R * c);
+        }
+
+        function updateStats(source, dest) {
+            const [lat1, lon1] = locations[source];
+            const [lat2, lon2] = locations[dest];
+            const distance = calculateDistance(lat1, lon1, lat2, lon2);
+            
+            // Calculate flight time (assuming 800 km/h average speed)
+            const hours = Math.floor(distance / 800);
+            const minutes = Math.round((distance / 800 % 1) * 60);
+            
+            // Calculate time difference based on longitude
+            const timeDiff = Math.round((lon2 - lon1) * 24 / 360);
+
+            document.getElementById('routeStats').innerHTML = `
+                <div style="margin: 10px 0;">
+                    <div style="display: flex; justify-content: space-between; margin: 5px 0;">
+                        <span>Distance:</span>
+                        <strong>${distance.toLocaleString()} km</strong>
                     </div>
-                    <div style="font-weight: 600; margin-bottom: 8px;">Route Details:</div>
-                    ${path.map((city, index) => `
-                        <div class="route-step">
-                            ${index + 1}. ${city}
-                        </div>
-                    `).join('')}
-                `;
-                
-                // Fit map to show entire route
-                const bounds = L.latLngBounds(path.map(city => locations[city]));
-                map.fitBounds(bounds, { padding: [50, 50] });
+                    <div style="display: flex; justify-content: space-between; margin: 5px 0;">
+                        <span>Est. Flight Time:</span>
+                        <strong>${hours}h ${minutes}m</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin: 5px 0;">
+                        <span>Time Difference:</span>
+                        <strong>${Math.abs(timeDiff)}h ${timeDiff >= 0 ? 'ahead' : 'behind'}</strong>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('statsPanel').style.display = 'block';
+        }
+
+        function clearRoute() {
+            currentMarkers.forEach(marker => map.removeLayer(marker));
+            currentMarkers = [];
+            if (currentPath) {
+                map.removeLayer(currentPath);
+                currentPath = null;
             }
+            document.getElementById('statsPanel').style.display = 'none';
+        }
         </script>
     </body>
     </html>
@@ -381,238 +362,37 @@ def create_map_html(locations, edges):
     with open("World_Map.html", "w", encoding="utf-8") as f:
         f.write(custom_html)
 
-# Rest of the code (locations and edges) remains the same...
-# Previous code remains same until locations definition...
-
-# Define locations with multiple cities per country
+# Define locations and edges
 locations = {
-    # United States
-    "New York": [40.7128, -74.0060],
-    "Los Angeles": [34.0522, -118.2437],
-    "Chicago": [41.8781, -87.6298],
-    "Miami": [25.7617, -80.1918],
-    "San Francisco": [37.7749, -122.4194],
-    "Houston": [29.7604, -95.3698],
-    "Seattle": [47.6062, -122.3321],
-
-    # United Kingdom
-    "London": [51.5074, -0.1278],
-    "Manchester": [53.4808, -2.2426],
-    "Birmingham": [52.4862, -1.8904],
-    "Edinburgh": [55.9533, -3.1883],
-
-    # Germany
-    "Berlin": [52.5200, 13.4050],
-    "Munich": [48.1351, 11.5820],
-    "Frankfurt": [50.1109, 8.6821],
-    "Hamburg": [53.5511, 9.9937],
-
-    # France
-    "Paris": [48.8566, 2.3522],
-    "Lyon": [45.7640, 4.8357],
-    "Marseille": [43.2965, 5.3698],
-    "Nice": [43.7102, 7.2620],
-
-    # Spain
-    "Madrid": [40.4168, -3.7038],
-    "Barcelona": [41.3851, 2.1734],
-    "Valencia": [39.4699, -0.3763],
-    "Seville": [37.3891, -5.9845],
-
-    # Italy
-    "Rome": [41.9028, 12.4964],
-    "Milan": [45.4642, 9.1900],
-    "Venice": [45.4408, 12.3155],
-    "Naples": [40.8518, 14.2681],
-
-    # Japan
-    "Tokyo": [35.6762, 139.6503],
-    "Osaka": [34.6937, 135.5023],
-    "Nagoya": [35.1815, 136.9066],
-    "Fukuoka": [33.5902, 130.4017],
-    "Sapporo": [43.0618, 141.3545],
-
-    # China
-    "Beijing": [39.9042, 116.4074],
-    "Shanghai": [31.2304, 121.4737],
-    "Guangzhou": [23.1291, 113.2644],
-    "Shenzhen": [22.5431, 114.0579],
-    "Chengdu": [30.5728, 104.0668],
-    "Xi'an": [34.3416, 108.9398],
-
-    # India
-    "Mumbai": [19.0760, 72.8777],
-    "Delhi": [28.6139, 77.2090],
-    "Bangalore": [12.9716, 77.5946],
-    "Chennai": [13.0827, 80.2707],
-    "Kolkata": [22.5726, 88.3639],
-    "Hyderabad": [17.3850, 78.4867],
-
-    # Australia
-    "Sydney": [-33.8688, 151.2093],
-    "Melbourne": [-37.8136, 144.9631],
-    "Brisbane": [-27.4705, 153.0260],
-    "Perth": [-31.9505, 115.8605],
-    "Adelaide": [-34.9285, 138.6007],
-
-    # Russia
-    "Moscow": [55.7558, 37.6173],
-    "St Petersburg": [59.9311, 30.3609],
-    "Novosibirsk": [55.0084, 82.9357],
-    "Yekaterinburg": [56.8389, 60.6057],
-
-    # South Korea
-    "Seoul": [37.5665, 126.9780],
-    "Busan": [35.1796, 129.0756],
-    "Incheon": [37.4563, 126.7052],
-
-    # Singapore
-    "Singapore": [1.3521, 103.8198],
-
-    # UAE
-    "Dubai": [25.2048, 55.2708],
-    "Abu Dhabi": [24.4539, 54.3773],
-    "Sharjah": [25.3462, 55.4211],
-
-    # Thailand
-    "Bangkok": [13.7563, 100.5018],
-    "Phuket": [7.8804, 98.3923],
-    "Chiang Mai": [18.7883, 98.9853],
-
-    # Brazil
-    "Rio de Janeiro": [-22.9068, -43.1729],
-    "São Paulo": [-23.5505, -46.6333],
-    "Brasília": [-15.7975, -47.8919],
-    "Salvador": [-12.9714, -38.5014],
-
-    # Canada
-    "Toronto": [43.6532, -79.3832],
-    "Vancouver": [49.2827, -123.1207],
-    "Montreal": [45.5017, -73.5673],
-    "Calgary": [51.0447, -114.0719],
-
-    # Netherlands
-    "Amsterdam": [52.3676, 4.9041],
-    "Rotterdam": [51.9244, 4.4777],
-    "The Hague": [52.0705, 4.3007],
-
-    # Turkey
-    "Istanbul": [41.0082, 28.9784],
-    "Ankara": [39.9334, 32.8597],
-    "Antalya": [36.8969, 30.7133],
-    "Izmir": [38.4237, 27.1428],
-
-    # Malaysia
-    "Kuala Lumpur": [3.1390, 101.6869],
-    "Penang": [5.4141, 100.3288],
-    "Johor Bahru": [1.4927, 103.7414],
-
-    # Indonesia
-    "Jakarta": [-6.2088, 106.8456],
-    "Bali": [-8.3405, 115.0920],
-    "Surabaya": [-7.2575, 112.7521],
-
-    # Vietnam
-    "Ho Chi Minh City": [10.8231, 106.6297],
-    "Hanoi": [21.0285, 105.8542],
-    "Da Nang": [16.0544, 108.2022],
-
-    # South Africa
-    "Cape Town": [-33.9249, 18.4241],
-    "Johannesburg": [-26.2041, 28.0473],
-    "Durban": [-29.8587, 31.0218],
-
-    # Egypt
-    "Cairo": [30.0444, 31.2357],
-    "Alexandria": [31.2001, 29.9187],
-    "Sharm El Sheikh": [27.9158, 34.3300]
+    "New York, USA": [40.712776, -74.005974],
+    "London, UK": [51.507351, -0.127758],
+    "Tokyo, Japan": [35.689487, 139.691711],
+    "Paris, France": [48.856613, 2.352222],
+    "Beijing, China": [39.904202, 116.407394],
+    "Sydney, Australia": [-33.868820, 151.209290],
+    "Dubai, UAE": [25.276987, 55.296249],
+    "Singapore, Singapore": [1.352083, 103.819839],
+    "Mumbai, India": [19.076090, 72.877426],
+    "Istanbul, Turkey": [41.008240, 28.978359],
+    "São Paulo, Brazil": [-23.550520, -46.633308],
+    "Cairo, Egypt": [30.044420, 31.235712],
+    "Cape Town, South Africa": [-33.924870, 18.424055],
+    "Moscow, Russia": [55.755825, 37.617298],
+    "Berlin, Germany": [52.520008, 13.404954]
 }
 
-# Define edges - Creating connections between cities
 edges = [
-    # US Internal Routes
-    ("New York", "Chicago", 1190),
-    ("New York", "Miami", 1757),
-    ("Los Angeles", "San Francisco", 629),
-    ("Chicago", "Houston", 1514),
-    ("Miami", "Houston", 1565),
-    ("Seattle", "San Francisco", 1300),
-    
-    # UK Internal Routes
-    ("London", "Manchester", 261),
-    ("London", "Edinburgh", 534),
-    ("Birmingham", "Manchester", 116),
-    
-    # Germany Internal Routes
-    ("Berlin", "Munich", 584),
-    ("Frankfurt", "Hamburg", 495),
-    ("Munich", "Hamburg", 776),
-    
-    # Major International Routes - North America to Europe
-    ("New York", "London", 5570),
-    ("New York", "Paris", 5837),
-    ("Chicago", "London", 6347),
-    ("Los Angeles", "London", 8780),
-    ("Toronto", "London", 5711),
-    ("Miami", "Madrid", 7103),
-    
-    # European Routes
-    ("London", "Paris", 344),
-    ("Paris", "Berlin", 878),
-    ("Amsterdam", "Paris", 431),
-    ("Madrid", "Paris", 1052),
-    ("Rome", "Paris", 1106),
-    ("Frankfurt", "Amsterdam", 355),
-    
-    # Asia Routes
-    ("Tokyo", "Seoul", 1157),
-    ("Beijing", "Tokyo", 2098),
-    ("Shanghai", "Tokyo", 1766),
-    ("Hong Kong", "Shanghai", 1255),
-    ("Singapore", "Bangkok", 1430),
-    ("Kuala Lumpur", "Singapore", 316),
-    ("Jakarta", "Singapore", 880),
-    
-    # Middle East Connections
-    ("Dubai", "Mumbai", 1920),
-    ("Delhi", "Dubai", 2200),
-    ("Abu Dhabi", "Mumbai", 1967),
-    ("Istanbul", "Dubai", 3010),
-    
-    # Australia Internal Routes
-    ("Sydney", "Melbourne", 713),
-    ("Brisbane", "Sydney", 753),
-    ("Perth", "Sydney", 3290),
-    
-    # Major Routes to Australia
-    ("Singapore", "Perth", 3915),
-    ("Dubai", "Sydney", 12051),
-    ("Hong Kong", "Sydney", 7398),
-    
-    # South America Routes
-    ("São Paulo", "Rio de Janeiro", 429),
-    ("São Paulo", "Brasília", 873),
-    ("Rio de Janeiro", "Salvador", 1209),
-    
-    # Africa Routes
-    ("Cairo", "Dubai", 2520),
-    ("Johannesburg", "Cairo", 6310),
-    ("Cape Town", "Johannesburg", 1270),
-    
-    # Additional Major International Routes
-    ("London", "Hong Kong", 9647),
-    ("Dubai", "Bangkok", 4890),
-    ("Singapore", "Sydney", 6300),
-    ("Tokyo", "Los Angeles", 8819),
-    ("New York", "São Paulo", 7658),
-    ("London", "Cape Town", 9670),
-    ("Moscow", "Beijing", 5800),
-    ("Singapore", "Shanghai", 3840),
-    ("Dubai", "London", 5502),
-    
-    # Add more edges as needed...
+    ("New York, USA", "London, UK", 5571),
+    ("London, UK", "Paris, France", 344),
+    ("Paris, France", "Berlin, Germany", 878),
+    ("Berlin, Germany", "Moscow, Russia", 1609),
+    ("Moscow, Russia", "Beijing, China", 5800),
+    ("Beijing, China", "Tokyo, Japan", 2098),
+    ("Dubai, UAE", "Mumbai, India", 1921),
+    ("Mumbai, India", "Singapore, Singapore", 3915),
+    ("Singapore, Singapore", "Sydney, Australia", 6298)
 ]
 
 # Create the map
 create_map_html(locations, edges)
-print('Enhanced map has been created as "World_Map.html"')
+print('World Map has been created and saved as "World_Map.html"')
